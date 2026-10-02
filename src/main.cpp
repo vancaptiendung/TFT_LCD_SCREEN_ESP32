@@ -1,161 +1,126 @@
 #include <Arduino.h>
+#define DELAY 1000
 
-#include <SPI.h>
+// Width and height of sprite
+#define WIDTH  240
+#define HEIGHT 320
 
-/*  Install the "TFT_eSPI" library by Bodmer to interface with the TFT Display - https://github.com/Bodmer/TFT_eSPI
-    *** IMPORTANT: User_Setup.h available on the internet will probably NOT work with the examples available at Random Nerd Tutorials ***
-    *** YOU MUST USE THE User_Setup.h FILE PROVIDED IN THE LINK BELOW IN ORDER TO USE THE EXAMPLES FROM RANDOM NERD TUTORIALS ***
-    FULL INSTRUCTIONS AVAILABLE ON HOW CONFIGURE THE LIBRARY: https://RandomNerdTutorials.com/cyd/ or https://RandomNerdTutorials.com/esp32-tft/   */
-#include <TFT_eSPI.h>
+#include <TFT_eSPI.h>                 // Include the graphics library (this includes the sprite functions)
 
-// Install the "XPT2046_Touchscreen" library by Paul Stoffregen to use the Touchscreen - https://github.com/PaulStoffregen/XPT2046_Touchscreen
-// Note: this library doesn't require further configuration
-#include <XPT2046_Touchscreen.h>
+TFT_eSPI    tft = TFT_eSPI();         // Declare object "tft"
 
-TFT_eSPI tft = TFT_eSPI();
+TFT_eSprite spr = TFT_eSprite(&tft);  // Declare Sprite object "spr" with pointer to "tft" object
 
-// Touchscreen pins
-#define XPT2046_IRQ 36   // T_IRQ
-#define XPT2046_MOSI 32  // T_DIN
-#define XPT2046_MISO 39  // T_OUT
-#define XPT2046_CLK 25   // T_CLK
-#define XPT2046_CS 33    // T_CS
-
-SPIClass touchscreenSPI = SPIClass(VSPI);
-XPT2046_Touchscreen touchscreen(XPT2046_CS, XPT2046_IRQ);
-
-#define SCREEN_WIDTH 320
-#define SCREEN_HEIGHT 240
-#define FONT_SIZE 2
-
-// Touchscreen coordinates: (x, y) and pressure (z)
-int x, y, z;
-
-//set custom color
-uint16_t customColor(uint8_t r, uint8_t g, uint8_t b) {
-    return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
-}
-
-// Print Touchscreen info about X, Y and Pressure (Z) on the Serial Monitor
-void printTouchToSerial(int touchX, int touchY, int touchZ) {
-  Serial.print("X = ");
-  Serial.print(touchX);
-  Serial.print(" | Y = ");
-  Serial.print(touchY);
-  Serial.print(" | Pressure = ");
-  Serial.print(touchZ);
+void setup()
+{
+  Serial.begin(250000);
   Serial.println();
-}
 
-// Print Touchscreen info about X, Y and Pressure (Z) on the TFT Display
-void printTouchToDisplay(int touchX, int touchY, int touchZ) {
-  // Clear TFT screen
-  tft.fillScreen(TFT_WHITE);
-  tft.setTextColor(TFT_BLACK, TFT_WHITE);
-
-  int centerX = SCREEN_WIDTH / 2;
-  int textY = 80;
- 
-  String tempText = "X = " + String(touchX);
-  tft.drawCentreString(tempText, centerX, textY, FONT_SIZE);
-
-  textY += 20;
-  tempText = "Y = " + String(touchY);
-  tft.drawCentreString(tempText, centerX, textY, FONT_SIZE);
-
-  textY += 20;
-  tempText = "Pressure = " + String(touchZ);
-  tft.drawCentreString(tempText, centerX, textY, FONT_SIZE);
-}
-void draw_donut(int x, int y, int r1, int r2, uint16_t color, uint16_t bg_color = TFT_BLACK) {
-  tft.fillCircle(x, y, r2, color);
-  tft.fillCircle(x, y, r1, bg_color);
-}
-
-uint16_t DEFAULT_DONUT_COLOR = TFT_PURPLE;
-uint16_t DEFAULT_BG_COLOR = TFT_BLACK;
-
-class Touched{
-int x, y, z;
-int count;
-int power;
-uint16_t RING_COLOR = DEFAULT_DONUT_COLOR;
-
-public:
-  Touched(int x, int y, int z){
-    this->x = x;
-    this->y = y;
-    this->z = z;
-    count = 10;
-    power = 100;
-  }
-
-  void draw(){
-    if (power > 0){
-      // draw_donut(x, y, count - 10, count, RING_COLOR, DEFAULT_BG_COLOR);
-      tft.fillCircle(x, y, count, RING_COLOR);
-      count ++;
-      power --;
-    }
-  }
-
-  int getpower() {return power;}
-
-};
-
-void setup() {
-  Serial.begin(115200);
-
-  // Start the SPI for the touchscreen and init the touchscreen
-  touchscreenSPI.begin(XPT2046_CLK, XPT2046_MISO, XPT2046_MOSI, XPT2046_CS);
-  touchscreen.begin(touchscreenSPI);
-
-  // Set the Touchscreen rotation in landscape mode
-  // Note: in some displays, the touchscreen might be upside down, so you might need to set the rotation to 3: touchscreen.setRotation(3);
-  touchscreen.setRotation(1);
-
-  // Start the tft display
+  // Initialise the TFT registers
   tft.init();
-  // Set the TFT display rotation in landscape mode
-  tft.setRotation(1);
 
-  // digitalWrite(TFT_BL, HIGH);
+  // Optionally set colour depth to 8 or 16 bits, default is 16 if not specified
+  // spr.setColorDepth(8);
+  spr.setColorDepth(8);
 
-  // Clear the screen before writing to it
-  tft.fillScreen(TFT_WHITE);
-  tft.setTextColor(TFT_BLACK, TFT_WHITE);
-  
-  // Set X and Y coordinates for center of display
-  int centerX = SCREEN_WIDTH / 2;
-  int centerY = SCREEN_HEIGHT / 2;
+  // Create a sprite of defined size
+  spr.createSprite(WIDTH, HEIGHT);
 
-  tft.drawCentreString("Hello, world!", centerX, 30, FONT_SIZE);
-  tft.drawCentreString("Touch screen to test", centerX, centerY, FONT_SIZE);
+  // Clear the TFT screen to blue
+  tft.fillScreen(TFT_BLUE);
 }
 
-Touched* A;
-void loop() {
-  tft.fillScreen(TFT_WHITE);
-  // delay(50);
-  if (A != nullptr) {
-    A->draw();
-    if (A->getpower() == 0) {A = nullptr;} 
+void loop(void)
+{
+  // Fill the whole sprite with black (Sprite is in memory so not visible yet)
+  spr.fillSprite(TFT_BLACK);
+
+  // Number of pixels to draw
+  uint16_t n = 100;
+
+  // Draw 100 random colour pixels at random positions in sprite
+  while (n--)
+  {
+    uint16_t colour = random(0x10000); // Returns colour 0 - 0xFFFF
+    int16_t x = random(WIDTH);        // Random x coordinate
+    int16_t y = random(HEIGHT);       // Random y coordinate
+    spr.drawPixel( x, y, colour);      // Draw pixel in sprite
   }
-  delay(200);
-  // Checks if Touchscreen was touched, and prints X, Y and Pressure (Z) info on the TFT display and Serial Monitor
-  if (touchscreen.touched()) {
-    // Get Touchscreen points
+
+  // Draw some lines
+  spr.drawLine(1, 0, WIDTH, HEIGHT-1, TFT_GREEN);
+  spr.drawLine(0, 0, WIDTH, HEIGHT, TFT_GREEN);
+  spr.drawLine(0, 1, WIDTH-1, HEIGHT, TFT_GREEN);
+  spr.drawLine(0, HEIGHT-1, WIDTH-1, 0, TFT_RED);
+  spr.drawLine(0, HEIGHT, WIDTH, 0, TFT_RED);
+  spr.drawLine(1, HEIGHT, WIDTH, 1, TFT_RED);
+
+  // Draw some text with Middle Centre datum
+  spr.setTextDatum(MC_DATUM);
+  spr.drawString("Sprite", WIDTH / 2, HEIGHT / 2, 4);
+
+  // Now push the sprite to the TFT at position 0,0 on screen
+  // spr.pushSprite(-40, -40);
+  spr.pushSprite(tft.width() / 2 - WIDTH / 2, tft.height() / 2 - HEIGHT / 2);
+  // spr.pushSprite(tft.width() - WIDTH + 40, tft.height() - HEIGHT + 40);
+
+  delay(DELAY);
+
+  // Fill TFT screen with blue
+  tft.fillScreen(TFT_BLUE);
+
+  // Draw a blue rectangle in sprite so when we move it 1 pixel it does not leave a trail
+  // on the blue screen background
+  spr.drawRect(0, 0, WIDTH, HEIGHT, TFT_BLUE);
+
+  int x = tft.width() / 2  -  WIDTH / 2, x1 = x, x2 = x;
+  int y = tft.height() / 2 - HEIGHT / 2, y1 = y, y2 = y;
+
+  uint32_t updateTime = 0;       // time for next update
+
+  while (true)
+  {
+    // Random movement direction
+    int dx = 1; if (random(2)) dx = -1;
+    int dy = 1; if (random(2)) dy = -1;
+
+    // Pull it back onto screen if it wanders off
     
-    TS_Point p = touchscreen.getPoint();
-    // Calibrate Touchscreen points with map function to the correct width and height
-    x = map(p.x, 200, 3700, 1, SCREEN_WIDTH);
-    y = map(p.y, 240, 3800, 1, SCREEN_HEIGHT);
-    z = p.z;
 
-    if (A == nullptr) {
-      A = new Touched(x, y, z);
+    // Draw it 50 time, moving in random direct or staying still
+    n = 50;
+    int wait = random (50);
+    while (n)
+    {
+      if (updateTime <= millis())
+      {
+        // Use time delay so sprite does not move fast when not all on screen
+        updateTime = millis() + wait;
+        spr.fillSprite(TFT_BLACK);
+        
+        x1 = x1 + dx;
+        y1 = y1 + dy;
+
+        if (x1 < -WIDTH/2) dx = 1;
+        if (x1 >= tft.width()-WIDTH/2) dx = -1;
+        if (y1 < -HEIGHT/2) dy = 1;
+        if (y1 >= tft.height()-HEIGHT/2) dy = -1;
+
+        x2 = x2 + dy;
+        y2 = y2 + dx;
+
+        spr.drawRect(x1, y1, 50, 50, TFT_BLUE); // Draw a blue rectangle in sprite so when we move it 1 pixel it does not leave a trail
+        spr.fillCircle(x2 + 25, y2 + 25, 20, TFT_RED); // Draw a red circle in sprite so when we move it 1 pixel it does not leave a trail
+        // Push the sprite to the TFT screen
+        spr.pushSprite(x, y);
+
+        // Change coord for next loop
+        // x += dx;
+        // y += dy;
+        n--;
+        yield(); // Stop watchdog reset
+      }
     }
-  }
-  
-  // delay(100);
+  } // Infinite while, will not exit!
 }
+
