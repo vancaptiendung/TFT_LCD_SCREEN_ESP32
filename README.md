@@ -35,3 +35,5 @@ if (touchscreen.touched()) {
     // your code
 }
 ```
+
+2. Use sprite to increase the fps, using tft.fillScreen will take alot of time to do, it render each pixel and show it at the time it render and that can make other object broken when increase the fps, so I use sprite to draw on memory first and push the Sprite to the screen at the time to increase quality and fps.
